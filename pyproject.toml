@@ -85,6 +85,8 @@ dev-engine = { features = ["dev", "dev-engine"], solve-group = "default" }
 
 [tool.pixi.dependencies]
 python = ">=3.11.0,<3.14"
+pip = "*"
+setuptools = "*"
 rdkit = ">=2025.3.6"
 
 [tool.pixi.feature.prod-engine.dependencies]
@@ -106,5 +108,5 @@ llvm-tools = "==21.1.0"
 compiler-rt = "==21.1.0"
 gtest = ">=1.14.0,<2"
 
-[tool.pixi.feature.dev-engine.pypi-dependencies]
-prexsyn-engine = { path = "../prexsyn-engine", editable = true }
+[tool.pixi.feature.dev-engine.tasks]
+install-engine = { cmd = "pip install -e ../prexsyn-engine" }
