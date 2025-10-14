@@ -37,6 +37,7 @@ line-length = 119
 [tool.isort]
 extra_standard_library = "typing_extensions,mypy,mypy_extensions"
 profile = "black"
+known_first_party = "prexsyn,prexsyn_engine"
 
 [tool.autoflake]
 remove-all-unused-imports = true
@@ -109,4 +110,4 @@ compiler-rt = "==21.1.0"
 gtest = ">=1.14.0,<2"
 
 [tool.pixi.feature.dev-engine.tasks]
-install-engine = { cmd = "pip install -e ../prexsyn-engine" }
+install-engine = { cmd = "pip install ../prexsyn-engine" }
