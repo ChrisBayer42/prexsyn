@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import torch
 from rdkit import Chem
@@ -109,6 +109,13 @@ class PropertySet:
         super().__init__()
         self._properties = list(properties)
         self._property_map = {p.name: p for p in self._properties}
+
+    def add(self, prop: BasePropertyDef) -> Self:
+        if prop.name in self._property_map:
+            raise ValueError(f"Property with name '{prop.name}' already exists in the property set.")
+        self._properties.append(prop)
+        self._property_map[prop.name] = prop
+        return self
 
     def get_featurizer_set(self) -> tuple[FeaturizerSet, set[str]]:
         fs = FeaturizerSet()
