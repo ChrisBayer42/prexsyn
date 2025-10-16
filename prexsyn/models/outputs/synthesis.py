@@ -17,8 +17,8 @@ class SynthesisOutput(nn.Module):
         self,
         dim: int,
         num_token_types: int,
-        max_bb_indices: int,
-        max_rxn_indices: int,
+        max_bb_index: int,
+        max_rxn_index: int,
         bb_embed_dim: int | None,
         pad_token: int,
         bb_token: int,
@@ -30,9 +30,9 @@ class SynthesisOutput(nn.Module):
         bb_embed_dim = bb_embed_dim or dim
         self.bb_head = nn.Sequential(
             nn.Identity() if bb_embed_dim == dim else nn.Linear(dim, bb_embed_dim),
-            nn.Linear(bb_embed_dim, max_bb_indices + 1),
+            nn.Linear(bb_embed_dim, max_bb_index + 1),
         )
-        self.rxn_head = nn.Linear(dim, max_rxn_indices + 1)
+        self.rxn_head = nn.Linear(dim, max_rxn_index + 1)
         self.pad_token = pad_token
         self.bb_token = bb_token
         self.rxn_token = rxn_token

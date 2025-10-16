@@ -1,5 +1,5 @@
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, cast
+from typing import cast
 
 import torch
 from torch import nn
@@ -19,11 +19,29 @@ class PrexSyn(nn.Module):
         dim_feedforward: int,
         num_layers: int,
         property_embedders: nn.ModuleDict,
-        synthesis_embedder_config: Mapping[str, Any],
+        num_token_types: int,
+        max_bb_index: int,
+        max_rxn_index: int,
+        bb_embed_dim: int,
+        pad_token: int,
+        end_token: int,
+        start_token: int,
+        bb_token: int,
+        rxn_token: int,
     ) -> None:
         super().__init__()
         self.dim = dim
-        self.synthesis_embedder = SynthesisEmbedder(dim=dim, **synthesis_embedder_config)
+        self.synthesis_embedder = SynthesisEmbedder(
+            dim=dim,
+            num_token_types=num_token_types,
+            max_bb_index=max_bb_index,
+            max_rxn_index=max_rxn_index,
+            bb_embed_dim=bb_embed_dim,
+            pad_token=pad_token,
+            bb_token=bb_token,
+            rxn_token=rxn_token,
+            end_token=end_token,
+        )
         self.property_embedders = cast(Mapping[EmbedderName, Callable[..., Embedding]], property_embedders)
         self.transformer_layers = cast(
             Sequence[TransformerLayer],
@@ -36,7 +54,17 @@ class PrexSyn(nn.Module):
                 for _ in range(num_layers)
             ),
         )
-        self.synthesis_output = SynthesisOutput(dim=dim, **synthesis_embedder_config)
+        self.synthesis_output = SynthesisOutput(
+            dim=dim,
+            num_token_types=num_token_types,
+            max_bb_index=max_bb_index,
+            max_rxn_index=max_rxn_index,
+            bb_embed_dim=bb_embed_dim,
+            pad_token=pad_token,
+            bb_token=bb_token,
+            rxn_token=rxn_token,
+            end_token=end_token,
+        )
 
     def embed_properties(self, property_repr: PropertyRepr) -> Embedding:
         prop_embs: list[Embedding] = []
