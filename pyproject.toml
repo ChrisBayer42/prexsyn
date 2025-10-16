@@ -89,6 +89,7 @@ python = ">=3.11.0,<3.14"
 pip = "*"
 setuptools = "*"
 rdkit = ">=2025.3.6"
+graphviz = ">=13"
 
 [tool.pixi.feature.prod-engine.dependencies]
 # Placeholder for prexsyn-engine conda package
