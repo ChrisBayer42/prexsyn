@@ -1,4 +1,5 @@
 import dataclasses
+from typing import cast
 
 import torch
 from torch import nn
@@ -6,9 +7,9 @@ from torch import nn
 
 @dataclasses.dataclass(frozen=True)
 class Prediction:
-    token_types: torch.Tensor  # (batch, seq_len, num_token_types)
-    bb_indices: torch.Tensor
-    rxn_indices: torch.Tensor
+    type_logits: torch.Tensor  # (batch, seq_len, num_token_types)
+    bb_logits: torch.Tensor
+    rxn_logits: torch.Tensor
 
 
 class SynthesisOutput(nn.Module):
@@ -88,7 +89,16 @@ class SynthesisOutput(nn.Module):
 
     def predict(self, h: torch.Tensor) -> Prediction:
         return Prediction(
-            token_types=self.token_head(h),
-            bb_indices=self.bb_head(h),
-            rxn_indices=self.rxn_head(h),
+            type_logits=self.token_head(h),
+            bb_logits=self.bb_head(h),
+            rxn_logits=self.rxn_head(h),
         )
+
+    def predict_type(self, h: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, self.token_head(h))
+
+    def predict_bb(self, h: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, self.bb_head(h))
+
+    def predict_rxn(self, h: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, self.rxn_head(h))

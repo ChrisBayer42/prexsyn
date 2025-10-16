@@ -8,7 +8,7 @@ from prexsyn.data.struct import EmbedderName, PropertyRepr, SynthesisRepr
 
 from .attention import TransformerLayer
 from .embeddings import Embedding, SynthesisEmbedder
-from .outputs.synthesis import SynthesisOutput
+from .outputs.synthesis import Prediction, SynthesisOutput
 
 
 class PrexSyn(nn.Module):
@@ -68,6 +68,9 @@ class PrexSyn(nn.Module):
             h = layer(h, tgt_mask=attn_mask, tgt_key_padding_mask=padding_mask)
         h_syn = h[..., -e_synthesis.sequence_length :, :]
         return h_syn
+
+    def predict(self, h_syn: torch.Tensor) -> Prediction:
+        return self.synthesis_output.predict(h_syn)
 
     def forward(
         self,
