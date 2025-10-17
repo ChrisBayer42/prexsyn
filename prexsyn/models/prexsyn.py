@@ -66,6 +66,10 @@ class PrexSyn(nn.Module):
             end_token=end_token,
         )
 
+    @property
+    def device(self) -> torch.device:
+        return next(self.parameters()).device
+
     def embed_properties(self, property_repr: PropertyRepr) -> Embedding:
         prop_embs: list[Embedding] = []
         for prop_dict in property_repr:
