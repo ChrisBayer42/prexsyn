@@ -18,7 +18,7 @@ from .struct import EmbedderName, EmbedderParams, SynthesisTrainingBatch
 class OnlineSynthesisDataset:
     def __init__(
         self,
-        chemspace: ChemicalSpace,
+        chemical_space: ChemicalSpace,
         property_set: PropertySet,
         tokenization: Tokenization,
         batch_size: int = 128,
@@ -27,7 +27,7 @@ class OnlineSynthesisDataset:
         base_seed: int = 2025,
     ) -> None:
         super().__init__()
-        self.chemspace = chemspace
+        self.chemical_space = chemical_space
         self.property_set = property_set
         self.tokenization = tokenization
 
@@ -60,7 +60,7 @@ class OnlineSynthesisDataset:
 
         self._pipeline = DataPipelineV2(
             num_threads=self.num_threads,
-            csd=self.chemspace.get_csd(),
+            csd=self.chemical_space.get_csd(),
             gen_option=SynthesisGeneratorOption(),
             featurizer=self._featurizer_set,
             base_seed=self.base_seed,
