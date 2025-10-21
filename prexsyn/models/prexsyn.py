@@ -71,6 +71,9 @@ class PrexSyn(nn.Module):
         return next(self.parameters()).device
 
     def embed_properties(self, property_repr: PropertyRepr) -> Embedding:
+        if isinstance(property_repr, Mapping):
+            property_repr = [property_repr]
+
         prop_embs: list[Embedding] = []
         for prop_dict in property_repr:
             prop_embs.append(

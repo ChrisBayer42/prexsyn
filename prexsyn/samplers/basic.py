@@ -65,9 +65,11 @@ class BasicSampler:
             "rxn_indices": next_rxn.reshape(batch_shape),
         }
 
-    def sample(self, property_repr: PropertyRepr) -> SynthesisRepr:
+    def sample(self, property_repr: PropertyRepr, repeat: int = 1) -> SynthesisRepr:
         with torch.no_grad():
             e_property = self.model.embed_properties(property_repr)
+            if repeat > 1:
+                e_property = e_property.repeat(repeat)
             batch_size = e_property.batch_size
             builder = self._create_builder(batch_size)
             for _ in range(self.max_length):

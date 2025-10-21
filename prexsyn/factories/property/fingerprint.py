@@ -63,7 +63,7 @@ class StandardFingerprintProperty(BasePropertyDef, abc.ABC):
 
     def evaluate_mol(self, mol: Chem.Mol | list[Chem.Mol]) -> Mapping[str, torch.Tensor]:
         mol = [mol] if isinstance(mol, Chem.Mol) else mol
-        return {f"{self.name}.fingerprint": torch.from_numpy(get_fingerprints(mol, fp_type=self.fp_type))}
+        return {"fingerprint": torch.from_numpy(get_fingerprints(mol, fp_type=self.fp_type))}
 
 
 class ECFP4(StandardFingerprintProperty):

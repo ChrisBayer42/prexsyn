@@ -58,6 +58,14 @@ class PropertySet:
         self._property_map[prop.name] = prop
         return self
 
+    def get(self, name: str) -> BasePropertyDef:
+        if name not in self._property_map:
+            raise ValueError(f"Property with name '{name}' does not exist in the property set.")
+        return self._property_map[name]
+
+    def __getitem__(self, name: str) -> BasePropertyDef:
+        return self.get(name)
+
     def subset(self, names: Sequence[str]) -> "PropertySet":
         new_props = []
         for name in names:

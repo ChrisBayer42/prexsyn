@@ -141,7 +141,7 @@ class RDKitDescriptors(BasePropertyDef):
             all_types.append(types)
             all_values.append(values)
 
-        return {f"{self.name}.values": torch.stack(all_values), f"{self.name}.types": torch.stack(all_types)}
+        return {"values": torch.stack(all_values), "types": torch.stack(all_types)}
 
 
 class RDKitDescriptorUpperBounds(BasePropertyDef):
