@@ -17,13 +17,15 @@ from .analog import AnalogGenerationDatabase, generate_analogs
 @click.option("--model", "model_path", type=click.Path(exists=True, path_type=pathlib.Path), required=True)
 @click.option("-i", "csv_path", type=click.Path(exists=True, path_type=pathlib.Path), required=True)
 @click.option("-o", "output_path", type=click.Path(path_type=pathlib.Path), required=True)
-@click.option("--max_length", default=16)
+@click.option("--max-length", default=16)
+@click.option("--num-samples", default=128)
 @click.option("--device", default="cuda")
 def analog_generation_cli(
     model_path: pathlib.Path,
     csv_path: pathlib.Path,
     output_path: pathlib.Path,
     max_length: int,
+    num_samples: int,
     device: torch.device | str,
 ) -> None:
     torch.set_grad_enabled(False)
@@ -44,7 +46,7 @@ def analog_generation_cli(
             sampler = BasicSampler(
                 model,
                 token_def=facade.tokenization.token_def,
-                num_samples=128,
+                num_samples=num_samples,
                 max_length=max_length,
             )
             with tqdm(total=len(smi_list)) as pbar:
