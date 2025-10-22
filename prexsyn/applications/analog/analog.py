@@ -6,7 +6,7 @@ import numpy as np
 from rdkit import Chem
 
 from prexsyn.data.struct import move_to_device
-from prexsyn.factories.property.fingerprint import StandardFingerprintProperty
+from prexsyn.factories.property import BasePropertyDef
 from prexsyn.models.prexsyn import PrexSyn
 from prexsyn.samplers.basic import BasicSampler
 from prexsyn_engine.detokenizer import Detokenizer
@@ -59,7 +59,7 @@ def generate_analogs(
     model: PrexSyn,
     sampler: BasicSampler,
     detokenizer: Detokenizer,
-    fp_property: StandardFingerprintProperty,
+    fp_property: BasePropertyDef,
     mol: Chem.Mol,
     eval_fp_type: str = "ecfp4",
 ) -> AnalogGenerationResult:
