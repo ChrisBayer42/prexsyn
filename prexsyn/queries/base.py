@@ -1,4 +1,5 @@
 import abc
+from typing import TypeAlias
 
 import sympy as sp
 from rdkit import Chem
@@ -43,9 +44,8 @@ class Not(Node):
 
 
 class Condition(Node, abc.ABC):
-    @property
-    def weight(self) -> float:
-        return 1.0
+    def __init__(self, weight: float) -> None:
+        self.weight = weight
 
     @abc.abstractmethod
     def get_property_repr(self) -> PropertyRepr: ...
@@ -89,7 +89,10 @@ def _sympy_expr_to_node(expr: sp.Expr, reverse_mapping: dict[sp.Symbol, Conditio
         raise ValueError(f"Unknown sympy expression type: {type(expr)}")
 
 
-def to_dnf(node: Node) -> list[list[tuple[Condition, bool]]]:
+DNF: TypeAlias = list[list[tuple[Condition, bool]]]
+
+
+def to_dnf(node: Node) -> DNF:
     mapping: dict[Condition, sp.Symbol] = {}
     expr = _node_to_sympy_expr(node, mapping)
     reverse_mapping: dict[sp.Symbol, Condition] = {v: k for k, v in mapping.items()}
