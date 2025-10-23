@@ -4,8 +4,11 @@ import torch
 from rdkit import Chem
 from torch import nn
 
+from prexsyn.data.struct import PropertyRepr
 from prexsyn.models.embeddings import BasePropertyEmbedder, Embedding
+from prexsyn.queries import Condition
 from prexsyn_engine.featurizer.rdkit_descriptors import RDKitDescriptorsFeaturizer
+from prexsyn_engine.synthesis import Synthesis
 
 from .base import BasePropertyDef
 
@@ -90,6 +93,47 @@ class ScalarPropertyUpperBoundEmbedder(BasePropertyEmbedder):
         return Embedding(h, m)
 
 
+class RDKitDescriptorsCondition(Condition):
+    def __init__(self, specs: dict[str, float], property_def: "RDKitDescriptors", weight: float = 1.0) -> None:
+        super().__init__(weight=weight)
+        self.property_def = property_def
+        if len(specs) > property_def.num_evaluated_descriptors:
+            raise ValueError(
+                f"Number of specified descriptors ({len(specs)}) exceeds "
+                f"the allowed number ({property_def.num_evaluated_descriptors})."
+            )
+        elif len(specs) == 0:
+            raise ValueError("At least one descriptor must be specified.")
+
+        type_names: list[str] = []
+        values: list[float] = []
+        for k, v in specs.items():
+            if k not in property_def.available_descriptors:
+                raise ValueError(f"Descriptor '{k}' is not available in RDKitDescriptors.")
+            type_names.append(k)
+            values.append(v)
+
+        self.type_names = type_names
+        types = [property_def.available_descriptors.index(name) for name in type_names]
+        self.types = torch.tensor(types, dtype=torch.long).unsqueeze(0)
+        self.values = torch.tensor(values, dtype=torch.float).unsqueeze(0)
+
+    def get_property_repr(self) -> PropertyRepr:
+        return {self.property_def.name: {"types": self.types, "values": self.values}}
+
+    def score(self, synthesis: Synthesis, product: Chem.Mol) -> float:
+        # TODO: implement scoring
+        raise NotImplementedError("Scoring for RDKitDescriptorsCondition is not implemented.")
+
+    def __repr__(self) -> str:
+        s: list[str] = []
+        for name, value in zip(self.type_names, self.values.squeeze(0).tolist()):
+            s.append(f"{name}={value:.2f}")
+        if len(s) > 1:
+            return "(" + " & ".join(s) + ")"
+        return s[0]
+
+
 class RDKitDescriptors(BasePropertyDef):
     def __init__(self, name: str = "rdkit_descriptors", num_evaluated_descriptors: int = 4) -> None:
         super().__init__()
@@ -99,6 +143,10 @@ class RDKitDescriptors(BasePropertyDef):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def num_evaluated_descriptors(self) -> int:
+        return self._num_evaluated_descriptors
 
     def get_featurizer(self) -> RDKitDescriptorsFeaturizer:
         return RDKitDescriptorsFeaturizer(
@@ -142,6 +190,13 @@ class RDKitDescriptors(BasePropertyDef):
             all_values.append(values)
 
         return {"values": torch.stack(all_values), "types": torch.stack(all_types)}
+
+    def eq(self, name: str, value: float, weight: float = 1.0) -> RDKitDescriptorsCondition:
+        specs = {name: value}
+        return RDKitDescriptorsCondition(specs=specs, property_def=self, weight=weight)
+
+    def eqs(self, specs: dict[str, float], weight: float = 1.0) -> RDKitDescriptorsCondition:
+        return RDKitDescriptorsCondition(specs=specs, property_def=self, weight=weight)
 
 
 class RDKitDescriptorUpperBounds(BasePropertyDef):
