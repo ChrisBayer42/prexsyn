@@ -10,7 +10,8 @@ from tqdm.auto import tqdm
 from prexsyn.factories.facade import Facade
 from prexsyn.samplers.basic import BasicSampler
 
-from .analog import AnalogGenerationDatabase, generate_analogs
+from .analog import generate_analogs
+from .data import AnalogGenerationDatabase
 
 
 @click.command()

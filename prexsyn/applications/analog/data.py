@@ -2,9 +2,12 @@ import copy
 import pathlib
 import pickle
 from collections.abc import Iterator, Mapping, MutableMapping, Sequence
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Self, TypedDict, TypeVar, cast
 
 import lmdb
+import numpy as np
+
+from prexsyn_engine.synthesis import Synthesis
 
 _DataType = TypeVar("_DataType", bound=Mapping[str, Any])
 
@@ -88,3 +91,41 @@ class ResultDatabase(MutableMapping[str, _DataType]):
         if self._keys_cache is not None:
             return len(self._keys_cache)
         return sum(1 for _ in self)
+
+
+class AnalogGenerationResult(TypedDict):
+    synthesis: list[Synthesis]
+    similarity: np.ndarray[Any, Any]
+    max_sim_product_idx: np.ndarray[Any, Any]
+    time_taken: float
+
+
+class AnalogGenerationDatabase(ResultDatabase[AnalogGenerationResult]):
+    def __init__(self, path: pathlib.Path | str) -> None:
+        super().__init__(path, extra_object_fields=["synthesis"])
+        self._max_similarities: dict[str, float] = {}
+
+    def __enter__(self) -> Self:
+        super().__enter__()
+        for key in iter(self):
+            data = self.get_without_extra(key)
+            self._max_similarities[key] = data["similarity"].max()
+        return self
+
+    def __setitem__(self, key: str, data: AnalogGenerationResult) -> None:
+        super().__setitem__(key, data)
+        self._max_similarities[key] = data["similarity"].max()
+
+    def get_average_similarity(self) -> float:
+        return sum(self._max_similarities.values()) / len(self._max_similarities) if self._max_similarities else 0.0
+
+    def get_reconstruction_rate(self) -> float:
+        return (
+            sum(1 for sim in self._max_similarities.values() if sim == 1.0) / len(self._max_similarities)
+            if self._max_similarities
+            else 0.0
+        )
+
+    def get_time_statistics(self) -> tuple[float, float]:
+        times = [self.get_without_extra(key)["time_taken"] for key in iter(self)]
+        return (float(np.mean(times)), float(np.std(times))) if times else (0.0, 0.0)
