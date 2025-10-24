@@ -67,20 +67,20 @@ class BasicSampler:
             "rxn_indices": next_rxn.reshape(batch_shape),
         }
 
+    @torch.no_grad()
     def sample(self, property_repr: PropertyRepr) -> SynthesisRepr:
-        with torch.no_grad():
-            e_property = self.model.embed_properties(property_repr)
-            if self.num_samples > 1:
-                e_property = e_property.repeat(self.num_samples)
-            batch_size = e_property.batch_size
-            builder = self._create_builder(batch_size)
-            for _ in range(self.max_length):
-                e_synthesis = self.model.embed_synthesis(builder.get())
-                h_syn = self.model.encode(e_property, e_synthesis)
+        e_property = self.model.embed_properties(property_repr)
+        if self.num_samples > 1:
+            e_property = e_property.repeat(self.num_samples)
+        batch_size = e_property.batch_size
+        builder = self._create_builder(batch_size)
+        for _ in range(self.max_length):
+            e_synthesis = self.model.embed_synthesis(builder.get())
+            h_syn = self.model.encode(e_property, e_synthesis)
 
-                next = self._predict_and_sample(h_syn[..., -1:, :], builder.ended)
-                builder.append(**next)
+            next = self._predict_and_sample(h_syn[..., -1:, :], builder.ended)
+            builder.append(**next)
 
-                if builder.ended.all():
-                    break
+            if builder.ended.all():
+                break
         return builder.get()

@@ -19,6 +19,9 @@ class Node(abc.ABC):
         return Or(self, other)
 
 
+Query: TypeAlias = Node
+
+
 class And(Node):
     def __init__(self, *children: "Node") -> None:
         self.children = children

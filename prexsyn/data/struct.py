@@ -13,6 +13,14 @@ class SynthesisRepr(TypedDict):
     rxn_indices: torch.Tensor
 
 
+def concat_synthesis_reprs(*reprs: "SynthesisRepr") -> "SynthesisRepr":
+    return SynthesisRepr(
+        token_types=torch.cat([r["token_types"] for r in reprs], dim=0),
+        bb_indices=torch.cat([r["bb_indices"] for r in reprs], dim=0),
+        rxn_indices=torch.cat([r["rxn_indices"] for r in reprs], dim=0),
+    )
+
+
 PropertyRepr: TypeAlias = Sequence[Mapping[EmbedderName, EmbedderParams]] | Mapping[EmbedderName, EmbedderParams]
 
 

@@ -7,7 +7,7 @@ from rdkit import Chem
 from prexsyn.data.struct import PropertyRepr
 from prexsyn_engine.synthesis import Synthesis
 
-from .base import Node, to_dnf
+from .base import Query, to_dnf
 
 
 def _property_repr_size(prop_repr: PropertyRepr) -> int:
@@ -22,11 +22,11 @@ def _property_repr_size(prop_repr: PropertyRepr) -> int:
 
 
 class QueryPlanner:
-    def __init__(self, query: Node) -> None:
+    def __init__(self, query: Query) -> None:
         self._query = query
         self._dnf = to_dnf(query)
 
-    def get_property_repr(self) -> list[PropertyRepr]:
+    def get_property_reprs(self) -> list[PropertyRepr]:
         prop_repr_list: list[PropertyRepr] = []
         for conjunction in self._dnf:
             prop_repr_conj: list[Any] = []
