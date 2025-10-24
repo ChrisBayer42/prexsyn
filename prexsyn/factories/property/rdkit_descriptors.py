@@ -219,7 +219,7 @@ class RDKitDescriptorUpperBoundCondition(Condition):
         raise NotImplementedError("Scoring for RDKitDescriptorUpperBoundCondition is not implemented.")
 
     def __repr__(self) -> str:
-        return f"{self.name}<={self.upper_bound.item():.2f}"
+        return f"{self.name}<{self.upper_bound.item():.2f}"
 
 
 class RDKitDescriptorUpperBound(BasePropertyDef):

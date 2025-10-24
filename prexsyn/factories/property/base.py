@@ -1,7 +1,7 @@
 import abc
 import importlib
 from collections.abc import Mapping, Sequence
-from typing import Self
+from typing import TYPE_CHECKING, Any, Self
 
 import omegaconf
 import torch
@@ -9,6 +9,7 @@ from rdkit import Chem
 from torch import nn
 
 from prexsyn.models.embeddings import BasePropertyEmbedder
+from prexsyn.queries import Query
 from prexsyn_engine.featurizer.base import Featurizer, FeaturizerSet
 from prexsyn_engine.synthesis import Synthesis
 
@@ -29,6 +30,13 @@ class BasePropertyDef(abc.ABC):
 
     def evaluate_synthesis(self, synthesis: Synthesis | list[Synthesis]) -> Mapping[str, torch.Tensor]:
         raise NotImplementedError(f"Property '{self.name}' does not support synthesis evaluation.")
+
+    if TYPE_CHECKING:
+
+        def eq(self, *args: Any, **kwargs: Any) -> Query: ...
+        def eqs(self, *args: Any, **kwargs: Any) -> Query: ...
+        def lt(self, *args: Any, **kwargs: Any) -> Query: ...
+        def gt(self, *args: Any, **kwargs: Any) -> Query: ...
 
 
 class PropertySet:
