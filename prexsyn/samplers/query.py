@@ -21,12 +21,14 @@ class QuerySampler:
         token_def: PostfixNotationTokenDef,
         num_samples: int,
         max_length: int = 16,
+        model_batch_size: int = 4096,
     ) -> None:
         super().__init__()
         self.model = model
         self.token_def = token_def
         self.num_samples = num_samples
         self.max_length = max_length
+        self.model_batch_size = model_batch_size
 
     def _create_builder(self, batch_size: int) -> SynthesisReprBuilder:
         return SynthesisReprBuilder(
@@ -81,12 +83,13 @@ class QuerySampler:
             "rxn_indices": next_rxn.reshape(batch_shape),
         }
 
-    def _sample_conjunctive(self, property_repr: PropertyRepr, weight: torch.Tensor) -> SynthesisRepr:
+    def _sample_conjunctive(
+        self, property_repr: PropertyRepr, weight: torch.Tensor, num_samples: int
+    ) -> SynthesisRepr:
         e_property = self.model.embed_properties(property_repr)
         num_conditions = e_property.batch_size
-        builder = self._create_builder(self.num_samples)
-        if self.num_samples > 1:
-            e_property = e_property.repeat(self.num_samples)
+        builder = self._create_builder(num_samples)
+        e_property = e_property.repeat(num_samples)
 
         for _ in range(self.max_length):
             e_synthesis = self.model.embed_synthesis(builder.get()).repeat_interleave(num_conditions)
@@ -109,7 +112,14 @@ class QuerySampler:
 
         sample_list: list[SynthesisRepr] = []
         for prop_repr, weight in zip(property_repr_list, weight_list):
-            samples = self._sample_conjunctive(prop_repr, weight)
-            sample_list.append(samples)
+            n_conds = weight.size(0)
+            chunk_size = self.model_batch_size // n_conds
+            for i in range(0, self.num_samples, chunk_size):
+                samples = self._sample_conjunctive(
+                    prop_repr,
+                    weight,
+                    num_samples=min(chunk_size, self.num_samples - i),
+                )
+                sample_list.append(samples)
 
         return concat_synthesis_reprs(*sample_list)
