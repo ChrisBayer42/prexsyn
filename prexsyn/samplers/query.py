@@ -1,6 +1,12 @@
 import torch
 
-from prexsyn.data.struct import PropertyRepr, SynthesisRepr, concat_synthesis_reprs
+from prexsyn.data.struct import (
+    PropertyRepr,
+    SynthesisRepr,
+    concat_synthesis_reprs,
+    move_to_device,
+)
+from prexsyn.models.outputs.synthesis import Prediction
 from prexsyn.models.prexsyn import PrexSyn
 from prexsyn.queries import Query, QueryPlanner
 from prexsyn_engine.featurizer.synthesis import PostfixNotationTokenDef
@@ -33,22 +39,63 @@ class QuerySampler:
             end_token=self.token_def.END,
         )
 
+    def _composite(self, pred: Prediction, weight: torch.Tensor) -> Prediction:
+        n_conds = weight.size(0)
+        n_samples = pred.type_logits.size(0) // n_conds
+        seqlen = pred.type_logits.size(1)
+        weight = weight.reshape(1, -1, 1, 1)
+
+        return Prediction(
+            type_logits=(pred.type_logits.reshape(n_samples, n_conds, seqlen, -1) * weight).sum(dim=1),
+            bb_logits=(pred.bb_logits.reshape(n_samples, n_conds, seqlen, -1) * weight).sum(dim=1),
+            rxn_logits=(pred.rxn_logits.reshape(n_samples, n_conds, seqlen, -1) * weight).sum(dim=1),
+            bb_token=pred.bb_token,
+            rxn_token=pred.rxn_token,
+        )
+
+    def _sample_from_pred(self, pred: Prediction, ended: torch.Tensor) -> dict[str, torch.Tensor]:
+        batch_shape = pred.type_logits.shape[:-1]
+        ended = ended.flatten()
+
+        type_logits = pred.type_logits.flatten(0, -2)
+        next_type = torch.multinomial(torch.softmax(type_logits, dim=-1), num_samples=1).squeeze(-1)
+        next_type = torch.where(ended, self.token_def.PAD, next_type)
+
+        next_bb = torch.zeros_like(next_type)
+        bb_pos = (next_type == self.token_def.BB).nonzero(as_tuple=True)[0]
+        if bb_pos.numel() > 0:
+            bb_logits = pred.bb_logits.flatten(0, -2)[bb_pos]
+            next_bb_subset = torch.multinomial(torch.softmax(bb_logits, dim=-1), num_samples=1).squeeze(-1)
+            next_bb[bb_pos] = next_bb_subset
+
+        next_rxn = torch.zeros_like(next_type)
+        rxn_pos = (next_type == self.token_def.RXN).nonzero(as_tuple=True)[0]
+        if rxn_pos.numel() > 0:
+            rxn_logits = pred.rxn_logits.flatten(0, -2)[rxn_pos]
+            next_rxn_subset = torch.multinomial(torch.softmax(rxn_logits, dim=-1), num_samples=1).squeeze(-1)
+            next_rxn[rxn_pos] = next_rxn_subset
+
+        return {
+            "token_types": next_type.reshape(batch_shape),
+            "bb_indices": next_bb.reshape(batch_shape),
+            "rxn_indices": next_rxn.reshape(batch_shape),
+        }
+
     def _sample_conjunctive(self, property_repr: PropertyRepr, weight: torch.Tensor) -> SynthesisRepr:
         e_property = self.model.embed_properties(property_repr)
+        num_conditions = e_property.batch_size
+        builder = self._create_builder(self.num_samples)
         if self.num_samples > 1:
             e_property = e_property.repeat(self.num_samples)
-        batch_size = e_property.batch_size
-        builder = self._create_builder(batch_size)
+
         for _ in range(self.max_length):
-            e_synthesis = self.model.embed_synthesis(builder.get())
+            e_synthesis = self.model.embed_synthesis(builder.get()).repeat_interleave(num_conditions)
             h_syn = self.model.encode(e_property, e_synthesis)
 
-            next_pred = self.model.predict(h_syn[..., -1:, :]).flatten()  # (num_samples * num_conditions, V)
-            logp = next_pred.logp.view(self.num_samples, -1, next_pred.logp.shape[-1])
-            logp = (logp * weight[None, :, None]).sum(dim=1)  # (num_samples, V)
-            next_tokens = torch.multinomial(logp.softmax(dim=-1), num_samples=1).squeeze(-1)
+            next_pred = self._composite(self.model.predict(h_syn[..., -1:, :]), weight)
+            next = self._sample_from_pred(next_pred, builder.ended)
+            builder.append(**next)
 
-            builder.append(**next_pred.unflatten_tokens(next_tokens))
             if builder.ended.all():
                 break
 
@@ -57,8 +104,8 @@ class QuerySampler:
     @torch.no_grad()
     def sample(self, query: Query) -> SynthesisRepr:
         planner = QueryPlanner(query)
-        property_repr_list = planner.get_property_reprs()
-        weight_list = planner.get_weights()
+        property_repr_list = move_to_device(planner.get_property_reprs(), self.model.device)
+        weight_list = move_to_device(planner.get_weights(), self.model.device)
 
         sample_list: list[SynthesisRepr] = []
         for prop_repr, weight in zip(property_repr_list, weight_list):

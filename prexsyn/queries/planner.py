@@ -22,7 +22,7 @@ def _property_repr_size(prop_repr: PropertyRepr) -> int:
 
 
 class QueryPlanner:
-    def __init__(self, query_or_dnf: DNF) -> None:
+    def __init__(self, query_or_dnf: DNF | Query) -> None:
         if isinstance(query_or_dnf, Query):
             dnf = to_dnf(query_or_dnf)
         else:

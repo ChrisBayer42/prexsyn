@@ -52,6 +52,12 @@ class Embedding:
             padding_mask=self.padding_mask.repeat(n, 1),
         )
 
+    def repeat_interleave(self, n: int) -> "Embedding":
+        return Embedding(
+            embedding=self.embedding.repeat_interleave(n, dim=0),
+            padding_mask=self.padding_mask.repeat_interleave(n, dim=0),
+        )
+
     @staticmethod
     def create_full_padding_mask(h: torch.Tensor) -> torch.Tensor:
         return torch.zeros(h.shape[:-1], dtype=h.dtype, device=h.device)
