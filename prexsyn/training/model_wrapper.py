@@ -63,17 +63,10 @@ class PrexSynWrapper(pl.LightningModule):
         for k, v in loss_dict.items():
             self.log(f"val/loss_{k}", v, on_step=False, prog_bar=False, logger=True)
 
-        samples = BasicSampler(self.model, token_def=self.facade.tokenization.token_def).sample(batch["property_repr"])
-        syn_true_list = self.facade.get_detokenizer()(
-            token_types=batch["synthesis_repr"]["token_types"].cpu().numpy(),
-            bb_indices=batch["synthesis_repr"]["bb_indices"].cpu().numpy(),
-            rxn_indices=batch["synthesis_repr"]["rxn_indices"].cpu().numpy(),
-        )
-        syn_pred_list = self.facade.get_detokenizer()(
-            token_types=samples["token_types"].cpu().numpy(),
-            bb_indices=samples["bb_indices"].cpu().numpy(),
-            rxn_indices=samples["rxn_indices"].cpu().numpy(),
-        )
+        sampler = BasicSampler(self.model, token_def=self.facade.tokenization.token_def, num_samples=1)
+        samples = sampler.sample(batch["property_repr"])
+        syn_true_list = self.facade.get_detokenizer()(**batch["synthesis_repr"])
+        syn_pred_list = self.facade.get_detokenizer()(**samples)
         sim_list: list[float] = []
         count_success = 0
         for syn_true, syn_pred in zip(syn_true_list, syn_pred_list):

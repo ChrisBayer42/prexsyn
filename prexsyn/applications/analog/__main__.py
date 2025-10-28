@@ -57,9 +57,9 @@ def analog_generation_cli(
                         print(f"Invalid SMILES: {smi}")
                         continue
                     entry = generate_analogs(
+                        facade=facade,
                         model=model,
                         sampler=sampler,
-                        detokenizer=facade.get_detokenizer(),
                         fp_property=facade.property_set["ecfp4"],
                         mol=mol,
                     )

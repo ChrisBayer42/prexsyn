@@ -8,10 +8,7 @@ import torch
 from rdkit import Chem
 from tqdm.auto import tqdm
 
-from prexsyn.applications.analog.analog import (
-    AnalogGenerationDatabase,
-    generate_analogs,
-)
+from prexsyn.applications.analog import AnalogGenerationDatabase, generate_analogs
 from prexsyn.factories.facade import Facade
 from prexsyn.models.prexsyn import PrexSyn
 from prexsyn.samplers.basic import BasicSampler
@@ -58,9 +55,9 @@ def _run(
                     print(f"Invalid SMILES: {smi}")
                     continue
                 entry = generate_analogs(
+                    facade=facade,
                     model=model,
                     sampler=sampler,
-                    detokenizer=facade.get_detokenizer(),
                     fp_property=facade.property_set["ecfp4"],
                     mol=mol,
                 )

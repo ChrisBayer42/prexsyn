@@ -13,8 +13,8 @@ from rdkit.Chem import PandasTools
 from rdkit.Chem.AllChem import Compute2DCoords  # type: ignore[attr-defined]
 
 from prexsyn.factories.facade import Facade, load_model
-from prexsyn.factories.property import PropertySet
 from prexsyn.models.prexsyn import PrexSyn
+from prexsyn.properties import PropertySet
 from prexsyn.queries import Query
 from prexsyn.samplers.query import QuerySampler
 from prexsyn.utils.oracles import OracleProtocol, get_oracle
@@ -61,18 +61,12 @@ def run_query(
 ) -> tuple[pd.DataFrame, list[Synthesis]]:
     sampler = QuerySampler(model, facade.tokenization.token_def, num_samples=n_samples)
     samples = sampler.sample(query)
-    syns = list(
-        facade.get_detokenizer()(
-            token_types=samples["token_types"].cpu().numpy(),
-            bb_indices=samples["bb_indices"].cpu().numpy(),
-            rxn_indices=samples["rxn_indices"].cpu().numpy(),
-        )
-    )
+    syns = list(facade.get_detokenizer()(**samples))
 
     df_list: list[dict[str, Any]] = []
     product_set: set[str] = set()
     for i, syn in enumerate(syns):
-        if syn.stack_size() == 0:
+        if syn.stack_size() != 1:
             continue
         for j, product in enumerate(syn.top().to_list()):
             smi = Chem.MolToSmiles(product)

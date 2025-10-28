@@ -6,9 +6,10 @@ from omegaconf import DictConfig, OmegaConf
 from prexsyn.models.prexsyn import PrexSyn
 from prexsyn.properties import PropertySet
 from prexsyn_engine.detokenizer import Detokenizer
+from prexsyn_engine.featurizer.synthesis import PostfixNotationTokenDef
 
 from .chemical_space import ChemicalSpace
-from .tokenization import Tokenization
+from .tokenization import DetokenizerWrapper, Tokenization
 
 
 class Facade:
@@ -41,12 +42,17 @@ class Facade:
     def tokenization(self) -> Tokenization:
         return self._tokenization
 
-    def get_detokenizer(self) -> Detokenizer:
+    def get_token_def(self) -> PostfixNotationTokenDef:
+        return self._tokenization.token_def
+
+    def get_detokenizer(self) -> DetokenizerWrapper:
         csd = self.chemical_space.get_csd()
-        return Detokenizer(
-            building_blocks=csd.get_primary_building_blocks(),
-            reactions=csd.get_reactions(),
-            token_def=self.tokenization.token_def,
+        return DetokenizerWrapper(
+            Detokenizer(
+                building_blocks=csd.get_primary_building_blocks(),
+                reactions=csd.get_reactions(),
+                token_def=self.tokenization.token_def,
+            )
         )
 
     def save_config(self, path: pathlib.Path | str) -> None:
