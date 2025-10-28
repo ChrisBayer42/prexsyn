@@ -22,7 +22,7 @@ from prexsyn_engine.fingerprints import diversity
 from prexsyn_engine.synthesis import Synthesis
 
 
-def preset_lipinski(ps: PropertySet, pn: str = "rdkit_descriptor_upper_bound") -> Query:
+def query_lipinski(ps: PropertySet, pn: str = "rdkit_descriptor_upper_bound") -> Query:
     p = ps[pn]
     return (
         p.lt("amw", 500.0)
@@ -31,6 +31,24 @@ def preset_lipinski(ps: PropertySet, pn: str = "rdkit_descriptor_upper_bound") -
         & p.lt("lipinskiHBA", 9)
         & p.lt("NumRotatableBonds", 9)
         & p.lt("tpsa", 140.0)
+    )
+
+
+def query_cobimetinib(ps: PropertySet) -> Query:
+    ref_mol = Chem.MolFromSmiles("OC1(CN(C1)C(=O)C1=C(NC2=C(F)C=C(I)C=C2)C(F)=C(F)C=C1)C1CCCCN1")
+    return (
+        ps["ecfp4"].eq(ref_mol, weight=0.75)
+        & ps["rdkit_descriptors"].eqs({"NumRotatableBonds": 3, "NumAromaticRings": 3})
+        & ps["rdkit_descriptor_upper_bound"].lt("CrippenClogP", 5.0)
+    )
+
+
+def query_osimertinib(ps: PropertySet) -> Query:
+    ref_mol = Chem.MolFromSmiles("COc1cc(N(C)CCN(C)C)c(NC(=O)C=C)cc1Nc2nccc(n2)c3cn(C)c4ccccc34")
+    return (
+        ps["ecfp4"].eq(ref_mol, weight=0.75)
+        & ps["rdkit_descriptor_upper_bound"].gt("tpsa", 100)
+        & ps["rdkit_descriptor_upper_bound"].lt("CrippenClogP", 1.0)
     )
 
 
@@ -54,7 +72,7 @@ def run_query(
     df_list: list[dict[str, Any]] = []
     product_set: set[str] = set()
     for i, syn in enumerate(syns):
-        if syn.stack_size() != 1:
+        if syn.stack_size() == 0:
             continue
         for j, product in enumerate(syn.top().to_list()):
             smi = Chem.MolToSmiles(product)
@@ -177,13 +195,22 @@ if __name__ == "__main__":
     logger.addHandler(logging.StreamHandler(sys.stdout))
     logger.addHandler(logging.FileHandler(output_dir / "log.txt"))
 
-    run_task(
-        facade=facade,
-        model=model,
-        query=preset_lipinski(facade.property_set),
-        score_fn=get_oracle("lipinski"),
-        n_samples=1000,
-        task_dir=output_dir / "lipinski",
-        logger=logger,
-        n_runs=5,
-    )
+    tasks = {
+        "lipinski": (query_lipinski(facade.property_set), get_oracle("lipinski")),
+        "cobimetinib": (query_cobimetinib(facade.property_set), get_oracle("cobimetinib")),
+        "osimertinib": (query_osimertinib(facade.property_set), get_oracle("osimertinib")),
+    }
+
+    for task_name, (query, score_fn) in tasks.items():
+        logger.info(f"===== Running task: {task_name} =====")
+        logger.info(f"Query: {query}")
+        run_task(
+            facade=facade,
+            model=model,
+            query=query,
+            score_fn=score_fn,
+            n_samples=1000,
+            task_dir=output_dir / task_name,
+            logger=logger,
+            n_runs=5,
+        )
