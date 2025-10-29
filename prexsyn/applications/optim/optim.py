@@ -40,7 +40,7 @@ class Optimizer:
         self.max_evals = max_evals
         self.step_strategy = step_strategy
         self.oracle_fn = oracle_fn
-        self.constraint_fn = constraint_fn
+        self.constraint_fn = constraint_fn or get_oracle("null")
         self.cond_query = cond_query
         self.time_limit = time_limit
         self.handle_interrupt = handle_interrupt
@@ -70,11 +70,10 @@ class Optimizer:
             device=self.model.device,
         )
 
-        constraint_fn = self.constraint_fn or get_oracle("null")
         return State(
             coords=property_repr["ecfp4"]["fingerprint"],
             scores=torch.tensor(self.oracle_fn(selected_products), device=self.model.device),
-            constraint_scores=torch.tensor(constraint_fn(selected_products), device=self.model.device),
+            constraint_scores=torch.tensor(self.constraint_fn(selected_products), device=self.model.device),
             ages=torch.zeros(len(selected_products), device=self.model.device, dtype=torch.long),
             syntheses=selected_syntheses,
             products=selected_products,
@@ -105,12 +104,8 @@ class Optimizer:
                     f"evals = {len(tracker)} max = {state.scores.max().item():.4f}, "
                     f"mean = {state.scores.mean().item():.4f}, "
                     f"p90 = {state.scores.quantile(0.9).item():.4f}, "
-                    + (
-                        f"max total = {state.total_scores.max().item():.4f}, "
-                        if self.constraint_fn is not None
-                        else ""
-                    )
-                    + f"moving_avg_top10 = {tracker.moving_top10_avg():.4f}, "
+                    f"max total = {state.total_scores.max().item():.4f}, "
+                    f"moving_avg_top10 = {tracker.moving_top10_avg():.4f}, "
                     f"auc_top10({self.max_evals / 1000}k) = {tracker.auc_top10(self.max_evals):.4f}, "
                 )
 
