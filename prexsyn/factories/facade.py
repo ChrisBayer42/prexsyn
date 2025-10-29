@@ -79,11 +79,15 @@ class Facade:
         return model
 
 
-def load_model(path: pathlib.Path | str) -> tuple[Facade, PrexSyn]:
+def load_model(path: pathlib.Path | str, train: bool = False) -> tuple[Facade, PrexSyn]:
     path = pathlib.Path(path)
     f_path = path.with_suffix(".yaml")
     if not f_path.exists():
         raise FileNotFoundError(f"Facade config file not found: {f_path}")
     facade = Facade.from_file(f_path)
     model = facade.load_model(path)
+    if train:
+        model.train()
+    else:
+        model.eval()
     return facade, model
