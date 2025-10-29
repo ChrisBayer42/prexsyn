@@ -105,29 +105,26 @@ def main(model_path: pathlib.Path, output_dir: pathlib.Path, num_runs: int, devi
 
     summary_list: list[pd.DataFrame] = []
 
-    try:
-        for dataset_name, df in datasets.items():
-            for num_samples in num_samples_grid:
-                for run_idx in range(num_runs):
-                    print(
-                        f"Running benchmark: dataset={dataset_name}, "
-                        f"num_samples={num_samples}, run_idx={run_idx}({num_runs})"
-                    )
-                    output_path = output_dir / f"{dataset_name}_{num_samples}_{run_idx}.out"
-                    summary_this = _run(
-                        facade=facade,
-                        model=model,
-                        df=df,
-                        output_path=output_path,
-                        num_samples=num_samples,
-                        max_length=16,
-                    )
-                    summary_this["dataset"] = dataset_name
-                    summary_this["num_samples"] = num_samples
-                    summary_this["run_idx"] = run_idx
-                    summary_list.append(summary_this)
-    except KeyboardInterrupt:
-        print("Interrupted by user, saving results...")
+    for dataset_name, df in datasets.items():
+        for num_samples in num_samples_grid:
+            for run_idx in range(num_runs):
+                print(
+                    f"Running benchmark: dataset={dataset_name}, "
+                    f"num_samples={num_samples}, run_idx={run_idx}({num_runs})"
+                )
+                output_path = output_dir / f"{dataset_name}_{num_samples}_{run_idx}.out"
+                summary_this = _run(
+                    facade=facade,
+                    model=model,
+                    df=df,
+                    output_path=output_path,
+                    num_samples=num_samples,
+                    max_length=16,
+                )
+                summary_this["dataset"] = dataset_name
+                summary_this["num_samples"] = num_samples
+                summary_this["run_idx"] = run_idx
+                summary_list.append(summary_this)
 
     summary_df = pd.concat(summary_list, ignore_index=True)
     summary_df.to_csv(output_dir / "summary.csv", index=False)
