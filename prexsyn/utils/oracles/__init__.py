@@ -7,6 +7,7 @@ from . import tdc as tdc
 from ._registry import OracleProtocol as OracleProtocol
 from ._registry import get_oracle as get_oracle
 from .cached import CachedOracle as CachedOracle
+from .custom import CustomOracle as CustomOracle
 
 try:
     from . import autodock as autodock
