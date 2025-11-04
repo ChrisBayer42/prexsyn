@@ -7,6 +7,7 @@ from . import sa_score as sa_score
 from . import tdc as tdc
 from ._registry import OracleProtocol as OracleProtocol
 from ._registry import get_oracle as get_oracle
+from ._registry import has_oracle as has_oracle
 from .cached import CachedOracle as CachedOracle
 from .custom import CustomOracle as CustomOracle
 

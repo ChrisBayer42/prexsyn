@@ -32,6 +32,14 @@ def get_oracle(name: str, *args: Any, **kwargs: Any) -> OracleProtocol:
     return _registry[name](*args, **kwargs)
 
 
+def has_oracle(name: str) -> bool:
+    try:
+        get_oracle(name)
+        return True
+    except ValueError:
+        return False
+
+
 class ComposedOracle:
     def __init__(self, *oracles: tuple[float, OracleProtocol]):
         self._funcs = [item[1] for item in oracles]
