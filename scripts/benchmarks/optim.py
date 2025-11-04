@@ -15,7 +15,7 @@ from prexsyn.factories.facade import Facade, load_model
 from prexsyn.models.prexsyn import PrexSyn
 from prexsyn.properties import PropertySet
 from prexsyn.queries import Query
-from prexsyn.utils.oracles import CachedOracle, get_oracle
+from prexsyn.utils.oracles import CachedOracle, get_oracle, has_oracle
 
 
 def query_lipinski(ps: PropertySet, pn: str = "rdkit_descriptor_upper_bound") -> Query:
@@ -65,6 +65,8 @@ class Task:
         num_init_samples: int = 500,
         cond_query: Query | None = None,
         step_strategy: StepStrategy | None = None,
+        bottleneck_size: int = 50,
+        bottleneck_temperature: float = 0.5,
     ) -> None:
         super().__init__()
         self.name = name
@@ -75,8 +77,8 @@ class Task:
         self.num_init_samples = num_init_samples
         self.cond_query = cond_query
         self.step_strategy = step_strategy or FingerprintGenetic(
-            bottleneck_size=50,
-            bottleneck_temperature=0.5,
+            bottleneck_size=bottleneck_size,
+            bottleneck_temperature=bottleneck_temperature,
         )
 
     def run(self, facade: Facade, model: PrexSyn, out_root: pathlib.Path, time_limit: int | None = None) -> None:
@@ -166,6 +168,26 @@ def main(
             max_evals=5000,
         ),
     ]
+
+    if has_oracle("sEH_proxy"):
+        tasks.append(
+            Task(
+                "sEH_proxy",
+                max_evals=10_000,
+                bottleneck_temperature=5.0,
+                constraint_name="qed+sa_score",
+                num_init_samples=1000,
+                bottleneck_size=100,
+            )
+        )
+    if has_oracle("autodock_Mpro_7gaw"):
+        tasks.append(
+            Task(
+                "autodock_Mpro_7gaw",
+                max_evals=2000,
+                constraint_name="2*qed+2*sa_score+5*lipinski_product",
+            )
+        )
 
     if selected_tasks:
         tasks = [task for task in tasks if task.name in selected_tasks]
