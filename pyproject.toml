@@ -26,7 +26,7 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["prexsyn"]
+include = ["prexsyn", "prexsyn.*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "prexsyn.__version__" }
