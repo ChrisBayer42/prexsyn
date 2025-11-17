@@ -14,7 +14,7 @@ tokenization: {} # nothing to set here
 
 data:
   batch_size: 1024
-  num_threads: 16
+  num_threads: 30
   virtual_length: 2000
 
   val_properties: ["ecfp4"]

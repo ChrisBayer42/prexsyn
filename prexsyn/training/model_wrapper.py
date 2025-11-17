@@ -45,7 +45,7 @@ class PrexSynWrapper(pl.LightningModule):
 
     def training_step(self, batch: SynthesisTrainingBatch, batch_idx: int) -> torch.Tensor:
         loss_dict = self.model(property_repr=batch["property_repr"], synthesis_repr=batch["synthesis_repr"])
-        loss = sum_weighted_losses(loss_dict, self.hparams["model"]["loss_weights"])
+        loss = sum_weighted_losses(loss_dict, self.hparams["training"]["loss_weights"])
         self.log("train/loss", loss, on_step=True, prog_bar=True, logger=True)
         for k, v in loss_dict.items():
             self.log(f"train/loss_{k}", v, on_step=True, prog_bar=False, logger=True)
@@ -58,7 +58,7 @@ class PrexSynWrapper(pl.LightningModule):
             synthesis_repr=batch["synthesis_repr"],
         )
 
-        loss = sum_weighted_losses(loss_dict, self.hparams["model"]["loss_weights"])
+        loss = sum_weighted_losses(loss_dict, self.hparams["training"]["loss_weights"])
         self.log("val/loss", loss, on_step=False, prog_bar=True, logger=True)
         for k, v in loss_dict.items():
             self.log(f"val/loss_{k}", v, on_step=False, prog_bar=False, logger=True)
