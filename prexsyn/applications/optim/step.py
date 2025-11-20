@@ -107,6 +107,7 @@ class FingerprintGenetic(StepStrategy):
         detok = facade.get_detokenizer()(**samples)
 
         mol_to_be_scored: list[Chem.Mol] = []
+        syn_to_be_scored: list[Synthesis] = []
         mol_to_syn_index: list[int] = []
         mol_to_fp: list[np.ndarray[Any, Any]] = []
         for syn_index in range(coords.shape[0]):
@@ -118,6 +119,7 @@ class FingerprintGenetic(StepStrategy):
 
             best_sim = 0.0
             best_mol: Chem.Mol | None = None
+            best_syn: Synthesis | None = None
             best_fp: np.ndarray[Any, Any] | None = None
             for prod in products:
                 prod_fp = fp_func(prod, self.fp_type)
@@ -126,10 +128,12 @@ class FingerprintGenetic(StepStrategy):
                 if sim > best_sim:
                     best_sim = sim
                     best_mol = prod
+                    best_syn = syn
                     best_fp = prod_fp
-            if best_mol is None or best_fp is None:
+            if best_mol is None or best_syn is None or best_fp is None:
                 continue
             mol_to_be_scored.append(best_mol)
+            syn_to_be_scored.append(best_syn)
             mol_to_syn_index.append(syn_index)
             mol_to_fp.append(best_fp)
 
@@ -141,13 +145,13 @@ class FingerprintGenetic(StepStrategy):
         new_coords_np = np.zeros(list(coords.size()), dtype=np.float32)
         new_syn_list: list[Synthesis | None] = [None] * coords.size(0)
         new_prod_list: list[Chem.Mol | None] = [None] * coords.size(0)
-        for mol, score, cstr_score, fp, syn_idx in zip(
-            mol_to_be_scored, mol_to_score, mol_to_constraint_score, mol_to_fp, mol_to_syn_index
+        for mol, syn, score, cstr_score, fp, syn_idx in zip(
+            mol_to_be_scored, syn_to_be_scored, mol_to_score, mol_to_constraint_score, mol_to_fp, mol_to_syn_index
         ):
             new_scores_list[syn_idx] = score
             new_constraint_scores_list[syn_idx] = cstr_score
             new_coords_np[syn_idx, :] = fp
-            new_syn_list[syn_idx] = detok[syn_idx]
+            new_syn_list[syn_idx] = syn
             new_prod_list[syn_idx] = mol
 
         return DeltaState(
