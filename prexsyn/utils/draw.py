@@ -13,7 +13,9 @@ from prexsyn_engine.synthesis import Synthesis
 from prexsyn_engine.types import Mol, Reaction
 
 
-def draw_molecule(mol: Mol, size: int | tuple[int, int] = 300) -> PIL.Image.Image:
+def draw_molecule(mol: Mol, size: int | tuple[int, int] = 300, recompute_coords: bool = False) -> PIL.Image.Image:
+    if recompute_coords:
+        Compute2DCoords(mol)
     size = (size, size) if isinstance(size, int) else size
 
     d2d = Draw.MolDraw2DCairo(size[0], size[1])
