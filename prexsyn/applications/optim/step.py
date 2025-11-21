@@ -112,16 +112,18 @@ class FingerprintGenetic(StepStrategy):
         mol_to_fp: list[np.ndarray[Any, Any]] = []
         for syn_index in range(coords.shape[0]):
             products: list[Chem.Mol] = []
+            syns: list[Synthesis] = []
             for syn in detok[syn_index * self.num_syns_per_query : (syn_index + 1) * self.num_syns_per_query]:
                 if syn.stack_size() != 1:
                     continue
                 products.extend(syn.top().to_list())
+                syns.extend([syn] * len(syn.top().to_list()))
 
             best_sim = 0.0
             best_mol: Chem.Mol | None = None
             best_syn: Synthesis | None = None
             best_fp: np.ndarray[Any, Any] | None = None
-            for prod in products:
+            for syn, prod in zip(syns, products):
                 prod_fp = fp_func(prod, self.fp_type)
                 ref_fp = coords[syn_index].cpu().numpy()
                 sim = self.tanimoto_np(prod_fp, ref_fp)
