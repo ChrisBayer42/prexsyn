@@ -7,7 +7,7 @@ import torch
 from rdkit import Chem
 from tqdm.auto import tqdm
 
-from prexsyn.factories.facade import Facade
+from prexsyn.factories.facade import load_model
 from prexsyn.samplers.basic import BasicSampler
 
 from .analog import generate_analogs
@@ -42,8 +42,8 @@ def analog_generation_cli(
                 print("All SMILES already processed.")
                 raise KeyboardInterrupt  # this is just a hack to jump to the final print
 
-            facade = Facade.from_file(model_path.with_suffix(".yaml"))
-            model = facade.load_model(model_path).eval().to(device)
+            facade, model = load_model(model_path)
+            model = model.eval().to(device)
             sampler = BasicSampler(
                 model,
                 token_def=facade.tokenization.token_def,

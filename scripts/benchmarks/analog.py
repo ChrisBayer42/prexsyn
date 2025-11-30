@@ -9,7 +9,7 @@ from rdkit import Chem
 from tqdm.auto import tqdm
 
 from prexsyn.applications.analog import AnalogGenerationDatabase, generate_analogs
-from prexsyn.factories.facade import Facade
+from prexsyn.factories.facade import Facade, load_model
 from prexsyn.models.prexsyn import PrexSyn
 from prexsyn.samplers.basic import BasicSampler
 
@@ -99,8 +99,8 @@ def main(model_path: pathlib.Path, output_dir: pathlib.Path, num_runs: int, devi
     num_samples_grid = [64, 128, 256]
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    facade = Facade.from_file(model_path.with_suffix(".yaml"))
-    model = facade.load_model(model_path).eval().to(device)
+    facade, model = load_model(model_path)
+    model = model.eval().to(device)
     torch.set_grad_enabled(False)
 
     summary_list: list[pd.DataFrame] = []

@@ -72,7 +72,7 @@ class Facade:
             rxn_token=self.tokenization.token_def.RXN,
         )
 
-    def load_model(self, path: pathlib.Path | str) -> PrexSyn:
+    def load_model_from_checkpoint(self, path: pathlib.Path | str) -> PrexSyn:
         state_dict = torch.load(path, map_location="cpu", weights_only=True)
         model = self.build_model()
         model.load_state_dict(state_dict)
@@ -85,7 +85,7 @@ def load_model(path: pathlib.Path | str, train: bool = False) -> tuple[Facade, P
     if not f_path.exists():
         raise FileNotFoundError(f"Facade config file not found: {f_path}")
     facade = Facade.from_file(f_path)
-    model = facade.load_model(path)
+    model = facade.load_model_from_checkpoint(path)
     if train:
         model.train()
     else:
