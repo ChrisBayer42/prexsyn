@@ -31,41 +31,22 @@ include = ["prexsyn", "prexsyn.*"]
 [tool.setuptools.dynamic]
 version = { attr = "prexsyn.__version__" }
 
-[tool.black]
+[tool.ruff]
 line-length = 119
+target-version = "py311"
+exclude = ["third_party"]
 
-[tool.isort]
-extra_standard_library = "typing_extensions,mypy,mypy_extensions"
-profile = "black"
-known_first_party = "prexsyn,prexsyn_engine"
+[tool.ruff.lint.isort]
+known-first-party = ["prexsyn", "prexsyn_engine"]
 
-[tool.autoflake]
-remove-all-unused-imports = true
-expand-star-imports = true
-ignore-init-module-imports = true
-
-[tool.mypy]
-ignore_missing_imports = true
-exclude = [
-    "tests",
-    "docs",
-    "build",
-    "dist",
-    ".eggs",
-    ".tox",
-    ".venv",
-    ".env",
-    "__pycache__",
-]
-strict = true
-disallow_subclassing_any = false
+[tool.pyright]
+typeCheckingMode = "strict"
+include = ["prexsyn"]
 
 [dependency-groups]
 dev = [
-    "black",
-    "flake8",
-    "isort",
-    "mypy",
+    "ruff",
+    "pyright",
     "pre-commit",
     "pytest",
     "ipykernel",
