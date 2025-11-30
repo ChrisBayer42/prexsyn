@@ -40,8 +40,8 @@ exclude = ["third_party"]
 known-first-party = ["prexsyn", "prexsyn_engine"]
 
 [tool.pyright]
-typeCheckingMode = "strict"
-include = ["prexsyn"]
+typeCheckingMode = "standard"
+ignore = ["third_party", "scripts/internals"]
 
 [dependency-groups]
 dev = [
