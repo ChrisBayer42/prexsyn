@@ -1,5 +1,8 @@
 # PrexSyn
 
+![PrexSyn Overview](imgs/overview.png)
+
+
 ## Introduction
 
 PrexSyn is an efficient, accurate, and programmable framework for synthesizable molecular design.
