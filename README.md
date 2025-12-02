@@ -1,34 +1,22 @@
 # PrexSyn
 
-
-
-[[Paper]](https://arxiv.org/abs/2512.00384)
-[[Documentation]](https://prexsyn.readthedocs.io)
-[[Data]](https://huggingface.co/datasets/luost26/prexsyn-data/tree/main)
+[![arXiv](https://img.shields.io/badge/arXiv-2512.00384-b31b1b.svg)](https://arxiv.org/abs/2512.00384)
+[![readthedocs](https://app.readthedocs.org/projects/prexsyn/badge/?version=latest)](https://prexsyn.readthedocs.io)
+[![data](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Data-blue)](https://huggingface.co/datasets/luost26/prexsyn-data/tree/main)
 
 Work in progress...
 
-## Installation
+## Usage
 
-We highly recommend using pixi to setup the environment, which is way easier and faster.
-If you are interested, please check out the [pixi-based installation guide](https://prexsyn.readthedocs.io/en/latest/getting-started/installation/). 
-Alternatively, you can follow the steps below to setup the environment manually.
+Please refer to the [documentation](https://prexsyn.readthedocs.io) for detailed usage instructions on installation, data setup, reproducibility, and customization.
 
-Create and activate conda (mamba) environment:
+## Citation
 
-```bash
-conda create -n prexsyn
-conda activate prexsyn
-```
-
-Install [PrexSyn Engine](https://github.com/luost26/prexsyn-engine). This package is only available via conda for now. RDKit will be installed as a dependency in this step.
-
-```bash
-conda install luost26::prexsyn-engine
-```
-
-Setup PrexSyn package. PyTorch and other dependencies will be installed in this step.
-
-```bash
-pip install -e .
+```bibtex
+@article{luo2025prexsyn,
+  title   = {Efficient and Programmable Exploration of Synthesizable Chemical Space},
+  author  = {Shitong Luo and Connor W. Coley},
+  year    = {2025},
+  journal = {arXiv preprint arXiv: 2512.00384}
+}
 ```
