@@ -1,18 +1,13 @@
-# PrexSyn
 
+# Installation
 
-
-[[Technical Report]](https://arxiv.org/abs/2512.00384)
-[[Documentation]](https://prexsyn.readthedocs.io)
-[[Data]](https://huggingface.co/datasets/luost26/prexsyn-data/tree/main)
-
-Work in progress...
-
-## Installation
+## Pixi (Recommended)
 
 We highly recommend using [pixi](https://pixi.sh/) to setup the environment, which is way easier and faster.
 If you are interested, please check out the [installation guide for pixi](https://prexsyn.readthedocs.io/en/latest/installation/pixi.html). 
 Alternatively, you can follow the steps below to setup the environment manually.
+
+## Conda/Mamba + PyPI
 
 Create and activate conda (mamba) environment:
 

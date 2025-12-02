@@ -1,3 +1,11 @@
 site_name: PrexSyn Documentation
+repo_url: https://github.com/luost26/prexsyn
 theme:
   name: material
+  features:
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - toc.follow
+    - awesome-pages
