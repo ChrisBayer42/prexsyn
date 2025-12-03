@@ -13,6 +13,11 @@ synthesis*[^postfix] (a molecular representation based on chemical reactions and
 
 We trained PrexSyn on a billion-scale datastream of postfix notations paired with molecular properties using only two GPUs and 32 CPU cores in two days. This is made possible by [PrexSyn Engine](https://github.com/luost26/prexsyn-engine), a real-time, high-throughput C++-based data generation pipeline.
 
+![PrexSyn Framework](imgs/fig1.png)
+/// caption
+PrexSyn framework overview from the [paper](https://arxiv.org/abs/2512.00384).
+///
+
 
 ## Capabilities
 
