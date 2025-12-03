@@ -43,6 +43,21 @@ Oracle: amlodipine
 
 ## sEH Proxy
 
+Run the following command to reproduce the sEH proxy task results:
+
 ```
-pixi run -e dev python scripts/benchmarks/optim.py -t sEH_proxy
+python scripts/benchmarks/optim.py -t sEH_proxy
+```
+
+The log file can be found at `outputs/benchmarks/optim/sEH_proxy/log.txt`. The log file should be similar to the following:
+
+```
+==== Summary ====
+Oracle: sEH_proxy
+- Runs: 5
+- AUC-Top10: 0.983 ± 0.011
+sEH Proxy Task Statistics over Top 1000 Molecules:
+- top1k_score: 1.0095 ± 0.0054
+- top1k_sa: 2.2312 ± 0.0368
+- top1k_qed: 0.8179 ± 0.0246
 ```
