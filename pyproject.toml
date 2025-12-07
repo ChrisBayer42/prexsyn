@@ -24,6 +24,11 @@ dependencies = [
     "wandb>=0.22.2,<0.23",
 ]
 
+[project.urls]
+Homepage = "https://prexsyn.readthedocs.io/"
+Documentation = "https://prexsyn.readthedocs.io/"
+Source = "https://github.com/luost26/PrexSyn"
+
 [project.optional-dependencies]
 eval = [
     ## GuacaMol
@@ -44,6 +49,8 @@ dev = [
     "ipywidgets",
     "mkdocs-material",
     "mkdocs-awesome-nav",
+    "build",
+    "twine",
 ]
 
 [tool.setuptools.packages.find]
@@ -73,7 +80,11 @@ prexsyn = { path = ".", editable = true }
 
 [tool.pixi.environments]
 dev = { features = ["eval", "dev"], solve-group = "default" }
-dev-engine = { features = ["eval", "dev", "dev-engine"], solve-group = "default" }
+dev-engine = { features = [
+    "eval",
+    "dev",
+    "dev-engine",
+], solve-group = "default" }
 
 [tool.pixi.tasks]
 
@@ -83,7 +94,7 @@ pip = "*"
 setuptools = "*"
 rdkit = ">=2025.3.6"
 graphviz = ">=13"
-prexsyn-engine = { version = ">=0.1.0" , channel = "luost26" }
+prexsyn-engine = { version = ">=0.1.0", channel = "luost26" }
 
 [tool.pixi.feature.dev-engine.dependencies]
 cmake = ">=4.1.1,<5"
