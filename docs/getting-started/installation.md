@@ -34,7 +34,7 @@ conda activate prexsyn
 Install [PrexSyn Engine](https://github.com/luost26/prexsyn-engine). This package is only available via conda for now. RDKit will be installed as a dependency in this step.
 
 ```bash
-conda install luost26::prexsyn-engine
+conda install conda-forge::prexsyn-engine
 ```
 
 Setup PrexSyn package. PyTorch and other dependencies will be installed in this step.
