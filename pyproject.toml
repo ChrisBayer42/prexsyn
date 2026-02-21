@@ -77,6 +77,7 @@ platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
 prexsyn = { path = ".", editable = true }
+streamlit-ketcher = ">=0.0.1"
 
 [tool.pixi.environments]
 dev = { features = ["eval", "dev"], solve-group = "default" }
@@ -95,6 +96,7 @@ setuptools = "*"
 rdkit = ">=2025.3.6"
 graphviz = ">=13"
 prexsyn-engine = ">=0.1.1.dev5"
+openchemlib = ">=1.0.0"
 
 [tool.pixi.feature.dev-engine.dependencies]
 cmake = ">=4.1.1,<5"
