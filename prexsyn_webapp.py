@@ -124,6 +124,7 @@ if "model_loaded" not in st.session_state:
     st.session_state.model_loaded = False
     st.session_state.facade = None
     st.session_state.model = None
+    st.session_state["page"] = "Home"
 
 # ── Model loading ────────────────────────────────────────────────────────────────
 def load_prexsyn_model() -> bool:
@@ -473,36 +474,35 @@ def _display_results(results_data: dict) -> None:
 
     for i, (prod, synthesis_list, sim) in enumerate(results):
         prod_smi = Chem.MolToSmiles(prod, canonical=True)
-        with st.expander(
-            f"#{i+1}  ·  {CalcMolFormula(prod)}  ·  similarity {sim:.3f}",
-            expanded=(i == 0),
-        ):
-            rc1, rc2 = st.columns([1, 2])
-            with rc1:
-                svg = render_mol_svg(prod_smi)
-                if svg:
-                    st.markdown(f'<div class="mol-card">{svg}</div>', unsafe_allow_html=True)
-            with rc2:
-                props = mol_properties(prod)
-                rows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in props.items())
-                lp = lipinski_pass(prod)
-                lp_cell = (
-                    '<span style="color:#059669;font-weight:600">Pass</span>'
-                    if lp else
-                    '<span style="color:#DC2626;font-weight:600">Fail</span>'
-                )
-                st.markdown(
-                    f'<span class="sim-badge">Similarity {sim:.3f}</span>'
-                    f'<table class="prop-table" style="margin-top:0.65rem">{rows}'
-                    f'<tr><td>Lipinski Ro5</td><td>{lp_cell}</td></tr></table>'
-                    f'<p style="font-size:0.78rem;font-family:monospace;color:#64748B;'
-                    f'word-break:break-all;margin-top:0.5rem">{prod_smi}</p>',
-                    unsafe_allow_html=True,
-                )
-                if st.button("View synthesis pathway", key=f"synth_{i}"):
-                    st.session_state["synthesis_to_show"] = synthesis_list
-                    st.session_state["goto_page"] = "Synthesis Visualization"
-                    st.rerun()
+        st.markdown(f"**Analog #{i+1}** · {CalcMolFormula(prod)} · similarity {sim:.3f}")
+        rc1, rc2 = st.columns([1, 2])
+        with rc1:
+            svg = render_mol_svg(prod_smi)
+            if svg:
+                st.markdown(f'<div class="mol-card">{svg}</div>', unsafe_allow_html=True)
+        with rc2:
+            props = mol_properties(prod)
+            rows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in props.items())
+            lp = lipinski_pass(prod)
+            lp_cell = (
+                '<span style="color:#059669;font-weight:600">Pass</span>'
+                if lp else
+                '<span style="color:#DC2626;font-weight:600">Fail</span>'
+            )
+            st.markdown(
+                f'<span class="sim-badge">Similarity {sim:.3f}</span>'
+                f'<table class="prop-table" style="margin-top:0.65rem">{rows}'
+                f'<tr><td>Lipinski Ro5</td><td>{lp_cell}</td></tr></table>'
+                f'<p style="font-size:0.78rem;font-family:monospace;color:#64748B;'
+                f'word-break:break-all;margin-top:0.5rem">{prod_smi}</p>',
+                unsafe_allow_html=True,
+            )
+            if st.button("View synthesis pathway", key=f"synth_{i}"):
+                st.session_state["synthesis_to_show"] = synthesis_list
+                st.session_state["goto_page"] = "Synthesis Visualization"
+                st.rerun()
+        if i < len(results) - 1:
+            st.markdown("---")
 
 
 def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
@@ -539,7 +539,6 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                     st.error(f"Failed to generate synthesis: {e}")
                     return
             exact_matches: list = []
-            other_valid: list = []
             for syn in result["synthesis"]:
                 if syn.stack_size() != 1:
                     continue
@@ -549,18 +548,19 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                         continue
                     if prod_smi == canonical_target:
                         exact_matches.append(syn)
-                    else:
-                        other_valid.append(syn)
                     break  # one product per synthesis object
-            chosen = (exact_matches + other_valid)[:num_results]
+            chosen = exact_matches[:num_results]
             if chosen:
                 st.session_state["synthesis_to_show"] = chosen
                 st.session_state["goto_page"] = "Synthesis Visualization"
                 st.rerun()
             else:
                 st.warning(
-                    "Could not generate a synthesis pathway. "
-                    "Try increasing **Samples (internal)** in the sidebar."
+                    "No synthesis pathway found that exactly reconstructs this molecule. "
+                    "PrexSyn samples the neighbourhood of the input fingerprint — the model "
+                    "may not generate the exact input SMILES in every run. "
+                    "Try increasing **Samples (internal)** in the sidebar, or view the "
+                    "synthesis pathway of one of the generated analogs instead."
                 )
                 return
 
@@ -588,39 +588,43 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
     import pandas as pd
 
     for path_idx, synthesis in enumerate(synthesis_list):
-        label = f"Pathway #{path_idx + 1}" if n > 1 else "Synthesis pathway"
-        with st.expander(label, expanded=(path_idx == 0)):
-            try:
-                with st.spinner("Rendering pathway…"):
-                    im = draw_synthesis(synthesis, show_intermediate=True, show_num_cases=True)
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                    im.save(tmp.name)
-                    st.image(tmp.name, use_container_width=True)
-            except Exception as e:
-                st.error(f"Could not render pathway #{path_idx + 1}: {e}")
-                continue
+        if n > 1:
+            st.markdown(f"**Pathway #{path_idx + 1}**")
+        try:
+            with st.spinner("Rendering pathway…"):
+                im = draw_synthesis(synthesis, show_intermediate=True, show_num_cases=True)
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                im.save(tmp.name)
+                st.image(tmp.name, use_container_width=True)
+        except Exception as e:
+            st.error(f"Could not render pathway #{path_idx + 1}: {e}")
+            if path_idx < n - 1:
+                st.markdown("---")
+            continue
 
-            # Step summary table
-            pfn_list = synthesis.get_postfix_notation().to_list()
-            rows = []
-            for step_i, item in enumerate(pfn_list):
-                if isinstance(item, Chem.Mol):
-                    smi = Chem.MolToSmiles(item, canonical=True)
-                    bb_idx = item.GetProp("building_block_index") if item.HasProp("building_block_index") else "—"
-                    rows.append({
-                        "Step": step_i + 1, "Type": "Building Block", "Index": bb_idx,
-                        "SMILES": smi, "Formula": CalcMolFormula(item),
-                        "MW (g/mol)": f"{Descriptors.MolWt(item):.1f}",
-                    })
-                elif isinstance(item, Chem.rdChemReactions.ChemicalReaction):
-                    rxn_idx = item.GetProp("reaction_index") if item.HasProp("reaction_index") else "—"
-                    rows.append({
-                        "Step": step_i + 1, "Type": "Reaction", "Index": rxn_idx,
-                        "SMILES": "—", "Formula": "—", "MW (g/mol)": "—",
-                    })
-            if rows:
-                st.markdown("**Step summary**")
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        # Step summary table
+        pfn_list = synthesis.get_postfix_notation().to_list()
+        rows = []
+        for step_i, item in enumerate(pfn_list):
+            if isinstance(item, Chem.Mol):
+                smi = Chem.MolToSmiles(item, canonical=True)
+                bb_idx = item.GetProp("building_block_index") if item.HasProp("building_block_index") else "—"
+                rows.append({
+                    "Step": step_i + 1, "Type": "Building Block", "Index": bb_idx,
+                    "SMILES": smi, "Formula": CalcMolFormula(item),
+                    "MW (g/mol)": f"{Descriptors.MolWt(item):.1f}",
+                })
+            elif isinstance(item, Chem.rdChemReactions.ChemicalReaction):
+                rxn_idx = item.GetProp("reaction_index") if item.HasProp("reaction_index") else "—"
+                rows.append({
+                    "Step": step_i + 1, "Type": "Reaction", "Index": rxn_idx,
+                    "SMILES": "—", "Formula": "—", "MW (g/mol)": "—",
+                })
+        if rows:
+            st.markdown("**Step summary**")
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        if path_idx < n - 1:
+            st.markdown("---")
 
     if st.button("Clear synthesis view"):
         st.session_state.pop("synthesis_to_show", None)
@@ -732,12 +736,15 @@ def main() -> None:
         </div>
         """, unsafe_allow_html=True)
 
-        # Programmatic navigation (e.g. from example buttons on Home)
-        default_page = st.session_state.pop("goto_page", "Home")
+        # Programmatic navigation: goto_page is set by buttons/reruns elsewhere;
+        # applying it here before the radio renders makes Streamlit pick it up cleanly.
         pages = ["Home", "Analog Generation", "Synthesis Visualization", "Batch Processing", "About"]
-        default_idx = pages.index(default_page) if default_page in pages else 0
+        if "goto_page" in st.session_state:
+            target = st.session_state.pop("goto_page")
+            if target in pages:
+                st.session_state["page"] = target
 
-        page = st.radio("Navigate", pages, index=default_idx, label_visibility="collapsed")
+        page = st.radio("Navigate", pages, key="page", label_visibility="collapsed")
 
         st.markdown("---")
         st.markdown("**Generation settings**")
