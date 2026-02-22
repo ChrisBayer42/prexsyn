@@ -257,10 +257,25 @@ def process_molecule(smiles: str, num_results: int, num_samples: int) -> None:
             result_list.append((prod, synthesis, sim))
 
     result_list.sort(key=lambda x: x[2], reverse=True)
+
+    # Find a synthesis that reconstructs the input molecule itself (often present)
+    input_synthesis = None
+    for synthesis in result["synthesis"]:
+        if synthesis.stack_size() != 1:
+            continue
+        for prod in synthesis.top().to_list():
+            prod_smi = Chem.MolToSmiles(prod, canonical=True)
+            if prod_smi == canonical_smi and not is_mixture(prod_smi):
+                input_synthesis = synthesis
+                break
+        if input_synthesis:
+            break
+
     st.session_state["results"] = {
-        "input_smiles": canonical_smi,
-        "input_mol":    mol,
-        "results":      result_list[:num_results],
+        "input_smiles":     canonical_smi,
+        "input_mol":        mol,
+        "results":          result_list[:num_results],
+        "input_synthesis":  input_synthesis,
     }
 
 
@@ -449,6 +464,11 @@ def _display_results(results_data: dict) -> None:
             f'{in_smi}</p>',
             unsafe_allow_html=True,
         )
+        if results_data.get("input_synthesis"):
+            if st.button("View synthesis pathway", key="synth_input"):
+                st.session_state["synthesis_to_show"] = results_data["input_synthesis"]
+                st.session_state["goto_page"] = "Synthesis Visualization"
+                st.rerun()
 
     results = results_data["results"]
     if not results:
