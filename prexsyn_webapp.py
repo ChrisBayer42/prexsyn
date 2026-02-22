@@ -539,6 +539,7 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                     st.error(f"Failed to generate synthesis: {e}")
                     return
             exact_matches: list = []
+            approx_valid: list = []   # (synthesis, prod_smi, similarity)
             for syn in result["synthesis"]:
                 if syn.stack_size() != 1:
                     continue
@@ -548,19 +549,29 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                         continue
                     if prod_smi == canonical_target:
                         exact_matches.append(syn)
+                    else:
+                        sim = tanimoto_similarity(prod, target_mol, fp_type="ecfp4")
+                        approx_valid.append((syn, prod_smi, sim))
                     break  # one product per synthesis object
-            chosen = exact_matches[:num_results]
-            if chosen:
-                st.session_state["synthesis_to_show"] = chosen
+            if exact_matches:
+                st.session_state["synthesis_to_show"] = exact_matches[:num_results]
+                st.session_state["synth_is_exact"] = True
+                st.session_state.pop("synth_approx_info", None)
+                st.session_state["goto_page"] = "Synthesis Visualization"
+                st.rerun()
+            elif approx_valid:
+                # Fall back to the most similar synthesizable molecule found
+                approx_valid.sort(key=lambda x: x[2], reverse=True)
+                best_syn, best_smi, best_sim = approx_valid[0]
+                st.session_state["synthesis_to_show"] = [best_syn]
+                st.session_state["synth_is_exact"] = False
+                st.session_state["synth_approx_info"] = (best_smi, best_sim)
                 st.session_state["goto_page"] = "Synthesis Visualization"
                 st.rerun()
             else:
                 st.warning(
-                    "No synthesis pathway found that exactly reconstructs this molecule. "
-                    "PrexSyn samples the neighbourhood of the input fingerprint — the model "
-                    "may not generate the exact input SMILES in every run. "
-                    "Try increasing **Samples (internal)** in the sidebar, or view the "
-                    "synthesis pathway of one of the generated analogs instead."
+                    "Could not generate any synthesis pathway. "
+                    "Try increasing **Samples (internal)** in the sidebar."
                 )
                 return
 
@@ -580,10 +591,24 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
         synthesis_list = [synthesis_list]
 
     n = len(synthesis_list)
-    if n == 1:
-        st.caption("Found 1 synthesis pathway.")
+    is_exact = st.session_state.get("synth_is_exact", True)
+    if is_exact:
+        st.caption(
+            f"Found {n} synthesis pathway{'s' if n != 1 else ''} "
+            f"that exactly reconstruct the input molecule."
+        )
     else:
-        st.caption(f"Found {n} synthesis pathways — showing all {n}.")
+        approx_smi, approx_sim = st.session_state.get("synth_approx_info", ("", 0.0))
+        st.warning(
+            f"The input molecule was not exactly reconstructed by the model "
+            f"(0 exact matches in 64 samples). "
+            f"Showing the most similar synthesizable molecule found "
+            f"(Tanimoto similarity **{approx_sim:.3f}**): `{approx_smi}`.  \n"
+            f"This is a known characteristic of PrexSyn: the model samples the "
+            f"fingerprint neighbourhood and is not guaranteed to reproduce the exact "
+            f"input SMILES — particularly for molecules outside the Enamine "
+            f"building-block + rxn115 reaction-template chemical space."
+        )
 
     import pandas as pd
 
@@ -627,7 +652,8 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
             st.markdown("---")
 
     if st.button("Clear synthesis view"):
-        st.session_state.pop("synthesis_to_show", None)
+        for k in ("synthesis_to_show", "synth_is_exact", "synth_approx_info"):
+            st.session_state.pop(k, None)
         st.rerun()
 
 
