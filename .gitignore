@@ -211,3 +211,17 @@ __marimo__/
 
 /logs*
 /notebooks
+
+# Screenshots and test artifacts (root level)
+/*.png
+/*.jpg
+
+# Scratch notebooks
+Untitled*.ipynb
+
+# Local setup and ad-hoc audit docs
+ENVIRONMENT_SETUP.md
+JUPYTER_SETUP.md
+WEBPAPP_SETUP.md
+SECURITY_IMPROVEMENTS.md
+SECURITY_TEST_RESULTS.md
