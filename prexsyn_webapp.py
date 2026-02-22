@@ -4,9 +4,10 @@ PrexSyn Web Application
 A professional interface for exploring synthesizable chemical space.
 """
 
+import base64
+import io
 import pathlib
 import re
-import tempfile
 
 import torch
 from rdkit import Chem
@@ -618,9 +619,14 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
         try:
             with st.spinner("Rendering pathway…"):
                 im = draw_synthesis(synthesis, show_intermediate=True, show_num_cases=True)
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                im.save(tmp.name)
-                st.image(tmp.name, use_container_width=True)
+            buf = io.BytesIO()
+            im.save(buf, format="PNG")
+            img_b64 = base64.b64encode(buf.getvalue()).decode()
+            st.markdown(
+                f'<img src="data:image/png;base64,{img_b64}" '
+                f'style="max-width:33%;height:auto;display:block;" />',
+                unsafe_allow_html=True,
+            )
         except Exception as e:
             st.error(f"Could not render pathway #{path_idx + 1}: {e}")
             if path_idx < n - 1:
