@@ -340,7 +340,7 @@ def show_analog_generation(num_results: int, num_samples: int) -> None:
                 "draw_smiles",
                 st.session_state.get("example_smiles", ""),
             )
-            drawn = st_ketcher(molecule=seed_smiles, height=500, key="ketcher")
+            drawn = st_ketcher(value=seed_smiles, height=500, key="ketcher")
 
             # Detect if the user has drawn something new
             if drawn and drawn != st.session_state.get("draw_smiles", ""):
