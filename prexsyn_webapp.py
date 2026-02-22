@@ -616,6 +616,22 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
     for path_idx, synthesis in enumerate(synthesis_list):
         if n > 1:
             st.markdown(f"**Pathway #{path_idx + 1}**")
+
+        # Inspect the pathway before rendering so we can size the image appropriately.
+        # Reactions are operators in the postfix list; 0 → single building block (33%),
+        # 1 → two-reactant step (66%), 2+ → multi-step cascade (full width).
+        pfn_list = synthesis.get_postfix_notation().to_list()
+        n_reactions = sum(
+            1 for item in pfn_list
+            if isinstance(item, Chem.rdChemReactions.ChemicalReaction)
+        )
+        if n_reactions == 0:
+            img_max_width = "33%"
+        elif n_reactions == 1:
+            img_max_width = "66%"
+        else:
+            img_max_width = "100%"
+
         try:
             with st.spinner("Rendering pathway…"):
                 im = draw_synthesis(synthesis, show_intermediate=True, show_num_cases=True)
@@ -624,7 +640,7 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
             img_b64 = base64.b64encode(buf.getvalue()).decode()
             st.markdown(
                 f'<img src="data:image/png;base64,{img_b64}" '
-                f'style="max-width:33%;height:auto;display:block;" />',
+                f'style="max-width:{img_max_width};height:auto;display:block;" />',
                 unsafe_allow_html=True,
             )
         except Exception as e:
@@ -633,8 +649,7 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                 st.markdown("---")
             continue
 
-        # Step summary table
-        pfn_list = synthesis.get_postfix_notation().to_list()
+        # Step summary table (pfn_list already computed above)
         rows = []
         for step_i, item in enumerate(pfn_list):
             if isinstance(item, Chem.Mol):
