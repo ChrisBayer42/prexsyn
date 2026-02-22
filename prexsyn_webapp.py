@@ -547,6 +547,7 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
             chosen = found or first_valid
             if chosen:
                 st.session_state["synthesis_to_show"] = chosen
+                st.session_state["goto_page"] = "Synthesis Visualization"
                 st.rerun()
             else:
                 st.warning("Could not generate a synthesis pathway. Try increasing Samples (internal) in the sidebar.")
