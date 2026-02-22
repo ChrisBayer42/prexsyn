@@ -243,19 +243,28 @@ def process_molecule(smiles: str, num_results: int, num_samples: int) -> None:
         st.error(f"Generation failed: {e}")
         return
 
-    visited: set[str] = set()
-    result_list = []
+    # Collect all synthesis routes per unique product SMILES so the Synthesis
+    # Visualization page can offer multiple alternative pathways for each analog.
+    synth_by_smi: dict[str, list] = {}
+    mol_by_smi: dict[str, tuple] = {}
     for synthesis in result["synthesis"]:
         if synthesis.stack_size() != 1:
             continue
         for prod in synthesis.top().to_list():
             prod_smi = Chem.MolToSmiles(prod, canonical=True)
-            if is_mixture(prod_smi) or prod_smi in visited:
+            if is_mixture(prod_smi):
                 continue
-            visited.add(prod_smi)
-            sim = tanimoto_similarity(prod, mol, fp_type="ecfp4")
-            result_list.append((prod, synthesis, sim))
+            if prod_smi not in mol_by_smi:
+                sim = tanimoto_similarity(prod, mol, fp_type="ecfp4")
+                mol_by_smi[prod_smi] = (prod, sim)
+                synth_by_smi[prod_smi] = []
+            synth_by_smi[prod_smi].append(synthesis)
+            break  # one product per synthesis object is enough
 
+    result_list = [
+        (mol_by_smi[smi][0], synth_by_smi[smi], mol_by_smi[smi][1])
+        for smi in mol_by_smi
+    ]
     result_list.sort(key=lambda x: x[2], reverse=True)
     st.session_state["results"] = {
         "input_smiles": canonical_smi,
@@ -462,7 +471,7 @@ def _display_results(results_data: dict) -> None:
 
     st.subheader(f"Top {len(results)} Analog{'s' if len(results) != 1 else ''}")
 
-    for i, (prod, synthesis, sim) in enumerate(results):
+    for i, (prod, synthesis_list, sim) in enumerate(results):
         prod_smi = Chem.MolToSmiles(prod, canonical=True)
         with st.expander(
             f"#{i+1}  ·  {CalcMolFormula(prod)}  ·  similarity {sim:.3f}",
@@ -491,7 +500,7 @@ def _display_results(results_data: dict) -> None:
                     unsafe_allow_html=True,
                 )
                 if st.button("View synthesis pathway", key=f"synth_{i}"):
-                    st.session_state["synthesis_to_show"] = synthesis
+                    st.session_state["synthesis_to_show"] = synthesis_list
                     st.session_state["goto_page"] = "Synthesis Visualization"
                     st.rerun()
 
@@ -503,13 +512,15 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
         "from building blocks using known reaction templates."
     )
 
-    # On-demand generation: user clicked "View synthesis pathway" for the input molecule
+    # On-demand generation: user clicked "View synthesis pathway" for the input molecule.
+    # Collects up to num_results distinct routes, preferring those that exactly reconstruct
+    # the input SMILES over analogs found along the way.
     if not st.session_state.get("synthesis_to_show") and st.session_state.get("synth_for_smiles"):
         target_smi = st.session_state.pop("synth_for_smiles")
         target_mol = Chem.MolFromSmiles(target_smi)
         if target_mol:
             canonical_target = Chem.MolToSmiles(target_mol, canonical=True)
-            with st.spinner("Generating synthesis pathway for input molecule…"):
+            with st.spinner("Generating synthesis pathways for input molecule…"):
                 sampler = BasicSampler(
                     st.session_state.model,
                     token_def=st.session_state.facade.tokenization.token_def,
@@ -527,9 +538,8 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                 except Exception as e:
                     st.error(f"Failed to generate synthesis: {e}")
                     return
-            # Prefer a synthesis that exactly reconstructs the input; fall back to first valid
-            found = None
-            first_valid = None
+            exact_matches: list = []
+            other_valid: list = []
             for syn in result["synthesis"]:
                 if syn.stack_size() != 1:
                     continue
@@ -537,20 +547,21 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
                     prod_smi = Chem.MolToSmiles(prod, canonical=True)
                     if is_mixture(prod_smi):
                         continue
-                    if first_valid is None:
-                        first_valid = syn
                     if prod_smi == canonical_target:
-                        found = syn
-                        break
-                if found:
-                    break
-            chosen = found or first_valid
+                        exact_matches.append(syn)
+                    else:
+                        other_valid.append(syn)
+                    break  # one product per synthesis object
+            chosen = (exact_matches + other_valid)[:num_results]
             if chosen:
                 st.session_state["synthesis_to_show"] = chosen
                 st.session_state["goto_page"] = "Synthesis Visualization"
                 st.rerun()
             else:
-                st.warning("Could not generate a synthesis pathway. Try increasing Samples (internal) in the sidebar.")
+                st.warning(
+                    "Could not generate a synthesis pathway. "
+                    "Try increasing **Samples (internal)** in the sidebar."
+                )
                 return
 
     if not st.session_state.get("synthesis_to_show"):
@@ -563,41 +574,53 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
             st.rerun()
         return
 
-    synthesis = st.session_state["synthesis_to_show"]
+    synthesis_list = st.session_state["synthesis_to_show"]
+    # Normalise: handle any legacy single-object stored from an older session
+    if not isinstance(synthesis_list, list):
+        synthesis_list = [synthesis_list]
 
-    try:
-        with st.spinner("Rendering pathway…"):
-            im = draw_synthesis(synthesis, show_intermediate=True, show_num_cases=True)
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-            im.save(tmp.name)
-            st.image(tmp.name, caption="Synthesis pathway", use_container_width=True)
-    except Exception as e:
-        st.error(f"Could not render synthesis pathway: {e}")
-        return
+    n = len(synthesis_list)
+    if n == 1:
+        st.caption("Found 1 synthesis pathway.")
+    else:
+        st.caption(f"Found {n} synthesis pathways — showing all {n}.")
 
-    # Step summary table
-    pfn_list = synthesis.get_postfix_notation().to_list()
-    rows = []
-    for i, item in enumerate(pfn_list):
-        if isinstance(item, Chem.Mol):
-            smi = Chem.MolToSmiles(item, canonical=True)
-            idx = item.GetProp("building_block_index") if item.HasProp("building_block_index") else "—"
-            rows.append({
-                "Step": i + 1, "Type": "Building Block", "Index": idx,
-                "SMILES": smi, "Formula": CalcMolFormula(item),
-                "MW (g/mol)": f"{Descriptors.MolWt(item):.1f}",
-            })
-        elif isinstance(item, Chem.rdChemReactions.ChemicalReaction):
-            idx = item.GetProp("reaction_index") if item.HasProp("reaction_index") else "—"
-            rows.append({
-                "Step": i + 1, "Type": "Reaction", "Index": idx,
-                "SMILES": "—", "Formula": "—", "MW (g/mol)": "—",
-            })
+    import pandas as pd
 
-    if rows:
-        import pandas as pd
-        st.markdown("**Step summary**")
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    for path_idx, synthesis in enumerate(synthesis_list):
+        label = f"Pathway #{path_idx + 1}" if n > 1 else "Synthesis pathway"
+        with st.expander(label, expanded=(path_idx == 0)):
+            try:
+                with st.spinner("Rendering pathway…"):
+                    im = draw_synthesis(synthesis, show_intermediate=True, show_num_cases=True)
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                    im.save(tmp.name)
+                    st.image(tmp.name, use_container_width=True)
+            except Exception as e:
+                st.error(f"Could not render pathway #{path_idx + 1}: {e}")
+                continue
+
+            # Step summary table
+            pfn_list = synthesis.get_postfix_notation().to_list()
+            rows = []
+            for step_i, item in enumerate(pfn_list):
+                if isinstance(item, Chem.Mol):
+                    smi = Chem.MolToSmiles(item, canonical=True)
+                    bb_idx = item.GetProp("building_block_index") if item.HasProp("building_block_index") else "—"
+                    rows.append({
+                        "Step": step_i + 1, "Type": "Building Block", "Index": bb_idx,
+                        "SMILES": smi, "Formula": CalcMolFormula(item),
+                        "MW (g/mol)": f"{Descriptors.MolWt(item):.1f}",
+                    })
+                elif isinstance(item, Chem.rdChemReactions.ChemicalReaction):
+                    rxn_idx = item.GetProp("reaction_index") if item.HasProp("reaction_index") else "—"
+                    rows.append({
+                        "Step": step_i + 1, "Type": "Reaction", "Index": rxn_idx,
+                        "SMILES": "—", "Formula": "—", "MW (g/mol)": "—",
+                    })
+            if rows:
+                st.markdown("**Step summary**")
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
     if st.button("Clear synthesis view"):
         st.session_state.pop("synthesis_to_show", None)
