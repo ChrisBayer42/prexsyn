@@ -257,25 +257,10 @@ def process_molecule(smiles: str, num_results: int, num_samples: int) -> None:
             result_list.append((prod, synthesis, sim))
 
     result_list.sort(key=lambda x: x[2], reverse=True)
-
-    # Find a synthesis that reconstructs the input molecule itself (often present)
-    input_synthesis = None
-    for synthesis in result["synthesis"]:
-        if synthesis.stack_size() != 1:
-            continue
-        for prod in synthesis.top().to_list():
-            prod_smi = Chem.MolToSmiles(prod, canonical=True)
-            if prod_smi == canonical_smi and not is_mixture(prod_smi):
-                input_synthesis = synthesis
-                break
-        if input_synthesis:
-            break
-
     st.session_state["results"] = {
-        "input_smiles":     canonical_smi,
-        "input_mol":        mol,
-        "results":          result_list[:num_results],
-        "input_synthesis":  input_synthesis,
+        "input_smiles": canonical_smi,
+        "input_mol":    mol,
+        "results":      result_list[:num_results],
     }
 
 
@@ -464,11 +449,11 @@ def _display_results(results_data: dict) -> None:
             f'{in_smi}</p>',
             unsafe_allow_html=True,
         )
-        if results_data.get("input_synthesis"):
-            if st.button("View synthesis pathway", key="synth_input"):
-                st.session_state["synthesis_to_show"] = results_data["input_synthesis"]
-                st.session_state["goto_page"] = "Synthesis Visualization"
-                st.rerun()
+        if st.button("View synthesis pathway", key="synth_input"):
+            st.session_state["synth_for_smiles"] = in_smi
+            st.session_state.pop("synthesis_to_show", None)
+            st.session_state["goto_page"] = "Synthesis Visualization"
+            st.rerun()
 
     results = results_data["results"]
     if not results:
@@ -517,6 +502,55 @@ def show_synthesis_visualization(num_results: int, num_samples: int) -> None:
         "Step-by-step visualization of how the selected molecule is assembled "
         "from building blocks using known reaction templates."
     )
+
+    # On-demand generation: user clicked "View synthesis pathway" for the input molecule
+    if not st.session_state.get("synthesis_to_show") and st.session_state.get("synth_for_smiles"):
+        target_smi = st.session_state.pop("synth_for_smiles")
+        target_mol = Chem.MolFromSmiles(target_smi)
+        if target_mol:
+            canonical_target = Chem.MolToSmiles(target_mol, canonical=True)
+            with st.spinner("Generating synthesis pathway for input molecule…"):
+                sampler = BasicSampler(
+                    st.session_state.model,
+                    token_def=st.session_state.facade.tokenization.token_def,
+                    num_samples=64,
+                    max_length=16,
+                )
+                try:
+                    result = generate_analogs(
+                        facade=st.session_state.facade,
+                        model=st.session_state.model,
+                        sampler=sampler,
+                        fp_property=st.session_state.facade.property_set["ecfp4"],
+                        mol=target_mol,
+                    )
+                except Exception as e:
+                    st.error(f"Failed to generate synthesis: {e}")
+                    return
+            # Prefer a synthesis that exactly reconstructs the input; fall back to first valid
+            found = None
+            first_valid = None
+            for syn in result["synthesis"]:
+                if syn.stack_size() != 1:
+                    continue
+                for prod in syn.top().to_list():
+                    prod_smi = Chem.MolToSmiles(prod, canonical=True)
+                    if is_mixture(prod_smi):
+                        continue
+                    if first_valid is None:
+                        first_valid = syn
+                    if prod_smi == canonical_target:
+                        found = syn
+                        break
+                if found:
+                    break
+            chosen = found or first_valid
+            if chosen:
+                st.session_state["synthesis_to_show"] = chosen
+                st.rerun()
+            else:
+                st.warning("Could not generate a synthesis pathway. Try increasing Samples (internal) in the sidebar.")
+                return
 
     if not st.session_state.get("synthesis_to_show"):
         st.info(
